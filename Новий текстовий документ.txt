@@ -1,0 +1,66 @@
+@echo off
+chcp 65001 >nul
+title Создание портативного пакета — Металлург Советник
+
+echo.
+echo  ╔══════════════════════════════════════════════════════╗
+echo  ║  Создание портативного пакета Советника Металлурга  ║
+echo  ╚══════════════════════════════════════════════════════╝
+echo.
+echo  ВНИМАНИЕ: Скрипт скачает ~400-600 MB данных.
+echo  Требуется интернет и Python 3.11+
+echo.
+pause
+
+REM Создаём структуру папок
+SET "PKG_DIR=%~dp0MetallurgyAdvisor_Portable"
+SET "PY_DIR=%PKG_DIR%\python"
+
+echo  [1/5] Создание структуры папок...
+IF EXIST "%PKG_DIR%" rmdir /s /q "%PKG_DIR%"
+mkdir "%PKG_DIR%"
+mkdir "%PKG_DIR%\data"
+echo  OK
+
+echo  [2/5] Скачивание Python Embedded (3.11)...
+powershell -Command "Invoke-WebRequest -Uri 'https://www.python.org/ftp/python/3.11.9/python-3.11.9-embed-amd64.zip' -OutFile '%TEMP%\python_embed.zip'"
+powershell -Command "Expand-Archive -Path '%TEMP%\python_embed.zip' -DestinationPath '%PY_DIR%' -Force"
+echo  OK
+
+echo  [3/5] Активация pip в embedded Python...
+REM Разкомментируем import site в python311._pth
+powershell -Command "(Get-Content '%PY_DIR%\python311._pth') -replace '#import site', 'import site' | Set-Content '%PY_DIR%\python311._pth'"
+
+REM Скачиваем get-pip.py
+powershell -Command "Invoke-WebRequest -Uri 'https://bootstrap.pypa.io/get-pip.py' -OutFile '%PY_DIR%\get-pip.py'"
+"%PY_DIR%\python.exe" "%PY_DIR%\get-pip.py" --quiet
+echo  OK
+
+echo  [4/5] Установка зависимостей в embedded Python...
+"%PY_DIR%\python.exe" -m pip install --quiet --target="%PY_DIR%\Lib\site-packages" ^
+    streamlit ^
+    pandas ^
+    numpy ^
+    scikit-learn ^
+    matplotlib ^
+    seaborn ^
+    joblib ^
+    python-docx ^
+    openpyxl ^
+    pyarrow ^
+    altair
+echo  OK
+
+echo  [5/5] Копирование файлов приложения...
+copy "%~dp0metallurgy_advisor_pro.py" "%PKG_DIR%\" /Y
+copy "%~dp0ЗАПУСТИТЬ_ПРИЛОЖЕНИЕ.bat" "%PKG_DIR%\" /Y
+echo  OK
+
+echo.
+echo   ГОТОВО! Портативный пакет создан: 
+echo   %PKG_DIR%
+echo.
+echo  Папку MetallurgyAdvisor_Portable можно скопировать 
+echo  на ЛЮБОЙ компьютер с Windows без Python!
+echo.
+pause
